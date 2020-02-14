@@ -1,5 +1,7 @@
 package com.zbk.authapp;
 
+import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
@@ -14,6 +16,7 @@ import androidx.appcompat.widget.Toolbar;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
@@ -24,6 +27,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private FirebaseAuth mAuth;
     private TextInputEditText editEmail;
     private TextInputEditText editPassword;
+    private ProgressDialog statusDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,9 +83,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void updateUI(FirebaseUser currentUser) {
-        if (currentUser!=null){
-            // link to home
-        }else{
+        hideDialog(statusDialog);
+        if (currentUser != null) {
+            startActivity(new Intent(this,HomeActivity.class));
+            finish();
+        } else {
             // error msg
         }
     }
@@ -106,23 +112,48 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void gotoRegister() {
-        startActivity(new Intent(this,SignUpActivity.class));
+        startActivity(new Intent(this, SignUpActivity.class));
     }
 
     private void processLogin() {
+
         String email = editEmail.getText().toString();
         String password = editPassword.getText().toString();
-
-        mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-            @Override
-            public void onComplete(@NonNull Task<AuthResult> task) {
-                if (task.isSuccessful()) {
-                    FirebaseUser user = mAuth.getCurrentUser();
-                    updateUI(user);
-                } else {
-                    updateUI(null);
+        if (email.isEmpty() || password.isEmpty()) {
+            Snackbar.make(editEmail, "email or password cannot be empty", Snackbar.LENGTH_INDEFINITE).show();
+        } else if (email.length() < 10 || password.length() < 8) {
+            Snackbar.make(editEmail, "email or password length invalid", Snackbar.LENGTH_INDEFINITE).show();
+        } else {
+            statusDialog = showDialog("authenticating with server");
+            mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                @Override
+                public void onComplete(@NonNull Task<AuthResult> task) {
+                    if (task.isSuccessful()) {
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        updateUI(user);
+                    } else {
+                        updateUI(null);
+                    }
                 }
-            }
-        });
+            });
+        }
     }
+
+    public ProgressDialog showDialog(String msg) {
+        Context context;
+        ProgressDialog dialog = new ProgressDialog(this);
+        dialog.setTitle(msg);
+        dialog.setCancelable(false);
+        dialog.show();
+        return dialog;
+    }
+
+    public void hideDialog(ProgressDialog dialog) {
+        if (dialog != null) {
+            if (dialog.isShowing()) {
+                dialog.dismiss();
+            }
+        }
+    }
+
 }
